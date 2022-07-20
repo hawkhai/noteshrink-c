@@ -233,6 +233,8 @@ static float KMeans(std::vector<NSHRgb> const& data, int k, int maxItr, //
         means.push_back(p);
         counts.push_back(0);
     }
+    means[k - 1] = { 0, 0, 0 };
+    //means[k - 1] = { 255, 255, 255 };
 
     std::vector<int> clusters(data.size());
     for (size_t i = 0; i < data.size(); i++) {
@@ -279,7 +281,7 @@ static float KMeans(std::vector<NSHRgb> const& data, int k, int maxItr, //
     }
     float total = 0;
     for (int i = 0; i < clusters.size(); i++) {
-        total += clusters[i];
+        total += sqrt(SquareDistance(means[clusters[i]], data[i]));
     }
     for (int i = 0; i < counts.size(); i++) {
         for (int j = 0; j < counts.size(); j++) {
@@ -299,26 +301,6 @@ static float KMeans(std::vector<NSHRgb> const& data, int k, int maxItr, //
     }
     return total / clusters.size();
 }
-
-// https://blog.csdn.net/qq_16564093/article/details/80698479
-float ColourDistance(NSHRgb colorA, NSHRgb colorB) {
-    if (false) {
-        float R = colorA.R - colorB.R;
-        float G = colorA.G - colorB.G;
-        float B = colorA.B - colorB.B;
-        return sqrt(R * R + G * G + B * B) / 442.0; // max 441.6729559300637
-    }
-
-    float rmean = (colorA.R + colorB.R) / 2;
-    float R = colorA.R - colorB.R;
-    float G = colorA.G - colorB.G;
-    float B = colorA.B - colorB.B;
-    float retv = sqrt((2 + rmean / 256) * (R * R) + //
-        4 * (G * G) + //
-        (2 + (255 - rmean) / 256) * (B * B));
-    return retv; // max 764
-}
-
 
 float mymin(float a, float b, float c) {
     return std::min(std::min(a, b), c);
@@ -343,52 +325,24 @@ static void CreatePalette(std::vector<NSHRgb> const& samples, NSHOption option, 
         printf("   %.4f ", counts[i] / total);
     }
     printf("\n");
-    for (int i = 0; i < counts.size(); i++) {
-        NSHRgb ax = means[0];
-        NSHRgb bx = means[1];
-        NSHRgb cx = means[2];
-        printf("   %.4f ", mymin(
-            ColourDistance(ax, means[i]), 
-            ColourDistance(bx, means[i]),
-                               ColourDistance(cx, means[i])
-        ) * counts[i] / total);
-    }
-    printf("\n");
+
     // 前面两个颜色占了 >= 80%
     float bf = (counts[0] + counts[1] + counts[2]) / total;
     // 其它所有颜色收敛度非常高。平均 距离 <= 2
     cluse <= 2; //
 
-    bool yes = false ||
-        (bf >= 0.85 && cluse <= 2) || 
-        (bf >= 0.90 && cluse <= 3) || 
-        (bf >= 0.95 && cluse <= 5) || 
-        (bf >= 0.98 && cluse <= 7) ||
-        (bf >= 0.99 && cluse <= 9);
-
-    float xk = 100;
-    if (bf >= 0.85)
-        xk = 2;
-    if (bf >= 0.90)
-        xk = 3;
-    if (bf >= 0.95)
-        xk = 5;
-    if (bf >= 0.98)
-        xk = 7;
-    if (bf >= 0.99)
-        xk = 9;
+    float xk = 0;
+    bool yes = false;
+    if (bf >= 0.85) {
+        xk = 15;
+        yes = yes || cluse <= xk;
+    }
+    if (bf >= 0.90) {
+        xk = 20;
+        yes = yes || cluse <= xk;
+    }
 
     printf("%.4f %.4f [%.0f] %s \n", bf, cluse, xk, yes  ? "true ------------------" : "false");
-
-    float dimap[8][8];
-    NSHRgb ax = { 0, 0, 0 };
-    NSHRgb bx = { 255, 255, 255 };
-    float maxdis = ColourDistance(ax, bx); 
-    for (int i = 0; i < outPalette.size() - 1; i++) {
-        for (int j = 0; j < outPalette.size() - 1; j++) {
-            dimap[i][j] = ColourDistance(means[i], means[j]);
-        }
-    }
 
     size_t idx = 0;
     outPalette[idx++] = bgColor;

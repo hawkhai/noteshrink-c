@@ -78,5 +78,6 @@ int main() {
         mainz(fpath[i]);
     }
 
+    getchar();
     return 0;
 }
